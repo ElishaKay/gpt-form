@@ -1,7 +1,7 @@
 {
     "dockerfile_lines": [],
     "graphs": {
-        "agent": "./src/memory_agent/graph.py:graph"
+        "form": "./src/memory_agent/form_graph.py:form_graph"
     },
     "env": ".env",
     "python_version": "3.11",

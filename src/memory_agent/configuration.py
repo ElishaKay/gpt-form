@@ -2,13 +2,12 @@
 
 import os
 from dataclasses import dataclass, field, fields
-from typing import Any, Optional
+from typing import Any, Optional, List
 
 from langchain_core.runnables import RunnableConfig
 from typing_extensions import Annotated
 
 from memory_agent import prompts
-
 
 @dataclass(kw_only=True)
 class Configuration:
@@ -40,3 +39,13 @@ class Configuration:
         }
 
         return cls(**{k: v for k, v in values.items() if v})
+
+@dataclass
+class FormConfiguration(Configuration):
+    questions: List[str] = (
+        "What is your name?",
+        "What is your age?",
+        "What are your hobbies?",
+    )
+    tone: str = "friendly and conversational"
+    current_question_index: int = 0

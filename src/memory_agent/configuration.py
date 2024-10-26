@@ -23,6 +23,11 @@ class Configuration:
         },
     )
     system_prompt: str = prompts.SYSTEM_PROMPT
+    questions: list[str] = field(default_factory=lambda: [
+        "What's your favorite color?",
+        "How do you like to spend your weekends?",
+        "What's your preferred way of learning?"
+    ])
 
     @classmethod
     def from_runnable_config(

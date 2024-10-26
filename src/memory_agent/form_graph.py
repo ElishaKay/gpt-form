@@ -28,7 +28,21 @@ Your task:
 
 Remember to maintain a {tone} tone throughout the conversation."""
 
-async def validate_answer(state: FormState, config: RunnableConfig, *, store: BaseStore) -> dict:
+config = {
+    "configurable": {
+        "user_id": "user123",
+        "model": "anthropic/claude-3-5-sonnet-20240620",
+        "questions": [
+            "What's your favorite color?",
+            "How do you like to spend your weekends?",
+            "What's your preferred way of learning?"
+        ],
+        "tone": "friendly",
+        "model": "openai/gpt-4"
+    }
+}
+
+async def validate_answer(state: FormState, *, store: BaseStore) -> dict:
     """Check if the user answered the current question."""
     configurable = configuration.Configuration.from_runnable_config(config)
     current_question = config["configurable"]["questions"][state.current_question_index]
@@ -46,7 +60,7 @@ async def validate_answer(state: FormState, config: RunnableConfig, *, store: Ba
     )
     return {"messages": [response]}
 
-def route_answer(state: FormState, config: RunnableConfig):
+def route_answer(state: FormState):
     """Determine next step based on answer validation."""
     msg = state.messages[-1]
     if msg.tool_calls:
@@ -54,7 +68,7 @@ def route_answer(state: FormState, config: RunnableConfig):
         return "next_question"
     return "ask_again"
 
-async def next_question(state: FormState, config: RunnableConfig) -> dict:
+async def next_question(state: FormState) -> dict:
     """Move to next question or end form."""
     questions = config["configurable"]["questions"]
     state.current_question_index += 1
@@ -65,44 +79,32 @@ async def next_question(state: FormState, config: RunnableConfig) -> dict:
     next_q = questions[state.current_question_index]
     return {"messages": [{"role": "assistant", "content": next_q}]}
 
-# Create form graph
+async def handle_user_input(state: FormState) -> dict:
+    """Initial handler for user input that starts the form sequence"""
+    questions = config["configurable"]["questions"]
+    first_question = questions[0]
+    return {"messages": [{"role": "assistant", "content": f"I'll help you with that. Let's start with our first question: {first_question}"}]}
+
+# Modify graph structure
 form_builder = StateGraph(FormState)
+
+# Add nodes
+form_builder.add_node("handle_user_input", handle_user_input)
 form_builder.add_node("validate_answer", validate_answer)
 form_builder.add_node("next_question", next_question)
-form_builder.add_conditional_edges(
-    "validate_answer",
-    route_answer,
-    {
-        "next_question": "next_question",
-        "ask_again": "validate_answer"
-    }
-)
+
+# Add edges
+form_builder.add_edge("__start__", "handle_user_input")
+form_builder.add_edge("handle_user_input", "next_question")
+# form_builder.add_conditional_edges(
+#     "validate_answer",
+#     route_answer,
+#     {
+#         "next_question": "next_question",
+#         "ask_again": "validate_answer"
+#     }
+# )
 form_builder.add_edge("next_question", "validate_answer")
+
 form_graph = form_builder.compile()
-form_graph.name = "FormAgent"
-
-# Example usage
-if __name__ == "__main__":
-    config = {
-        "configurable": {
-            "questions": [
-                "What's your favorite color?",
-                "How do you like to spend your weekends?",
-                "What's your preferred way of learning?"
-            ],
-            "tone": "friendly and empathetic",
-            "user_id": "user123",
-            "model": "openai/gpt-4"  # Add model configuration
-        }
-    }
-
-    # Start conversation
-    async def main():
-        await form_graph.ainvoke(
-            {"messages": [{"role": "system", "content": "Let's begin the survey"}]},
-            config
-        )
-
-    asyncio.run(main())
-
 __all__ = ["form_graph"]
